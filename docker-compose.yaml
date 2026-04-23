@@ -1,0 +1,130 @@
+name: projetia-devpro
+
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres : persistance des batches et images
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-projetia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-projetia}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-projetia} -d ${POSTGRES_DB:-projetia}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - projetia-net
+
+  # ---------------------------------------------------------------------------
+  # Redis : queue de jobs (arq) + futur rate limiting
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - projetia-net
+
+  # ---------------------------------------------------------------------------
+  # ComfyUI : moteur d'inférence (CPU, SD-Turbo téléchargé au 1er démarrage)
+  # ---------------------------------------------------------------------------
+  comfyui:
+    build:
+      context: .
+      dockerfile: docker/comfyui/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./data/models:/app/ComfyUI/models
+      - ./workflows:/app/workflows:ro
+    ports:
+      - "127.0.0.1:8188:8188"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8188/system_stats || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    networks:
+      - projetia-net
+
+  # ---------------------------------------------------------------------------
+  # Worker : dépile la queue Redis, orchestre la génération
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      COMFYUI_HOST: comfyui
+    volumes:
+      - ./data/images:/data/images
+      - ./src:/app/src:ro
+      - ./workflows:/app/workflows:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      comfyui:
+        condition: service_started
+    networks:
+      - projetia-net
+
+  # ---------------------------------------------------------------------------
+  # Gradio : UI web + soumission des jobs
+  # ---------------------------------------------------------------------------
+  gradio:
+    build:
+      context: .
+      dockerfile: docker/gradio/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      GRADIO_SERVER_NAME: 0.0.0.0
+    volumes:
+      - ./data/images:/data/images:ro
+      - ./src:/app/src:ro
+    ports:
+      - "7860:7860"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - projetia-net
+
+# -----------------------------------------------------------------------------
+# Réseau & volumes
+# -----------------------------------------------------------------------------
+networks:
+  projetia-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
