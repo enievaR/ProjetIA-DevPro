@@ -1,4 +1,4 @@
-"""Configuration centralisée, chargée depuis l'environnement."""
+"""Configuration chargé depuis env"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 
 class Settings(BaseModel):
-    """Toutes les variables d'env consommées par l'app."""
+    """Déclaration des variable de configuration"""
 
     # Postgres
     postgres_user: str = "projetia"
@@ -56,7 +56,7 @@ class Settings(BaseModel):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Instance unique des settings, chargés depuis l'env."""
+    """Chargement des variables depuis env"""
     return Settings(
         postgres_user=os.getenv("POSTGRES_USER", "projetia"),
         postgres_password=os.getenv("POSTGRES_PASSWORD", "changeme"),

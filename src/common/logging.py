@@ -1,4 +1,4 @@
-"""Configuration centrale de structlog."""
+"""LOGGER pour debug le code. """
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import structlog
 
 
 def configure_logging(level: str = "INFO") -> None:
-    """Configure structlog + stdlib logging pour sortir du JSON en prod-like."""
 
     logging.basicConfig(
         format="%(message)s",
@@ -22,7 +21,7 @@ def configure_logging(level: str = "INFO") -> None:
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),  # plus lisible en dev ; à remplacer par JSONRenderer en prod
+            structlog.dev.ConsoleRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
             getattr(logging, level.upper(), logging.INFO)

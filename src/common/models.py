@@ -1,4 +1,4 @@
-"""Modèles Pydantic partagés : contrats d'interface entre les services."""
+"""Contrats d'interface entre les services."""
 
 from __future__ import annotations
 

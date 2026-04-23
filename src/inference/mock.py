@@ -5,7 +5,7 @@ Sera implémenté au sprint 2 (retourne des images placeholder sans inférence).
 
 from __future__ import annotations
 
-from src.common.model import GeneratedImage, PromptSpec
+from src.common.models import GeneratedImage, PromptSpec
 from src.inference.base import InferenceBackend
 
 

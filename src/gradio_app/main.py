@@ -6,7 +6,7 @@ import gradio as gr
 
 from src.common.config import get_settings
 from src.common.logging import configure_logging, get_logger
-from src.common.model import BatchRequest
+from src.common.models import BatchRequest
 
 settings = get_settings()
 configure_logging(settings.log_level)

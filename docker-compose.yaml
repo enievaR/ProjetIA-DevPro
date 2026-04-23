@@ -81,6 +81,7 @@ services:
     volumes:
       - ./data/images:/data/images
       - ./src:/app/src:ro
+      - ./scripts:/app/scripts:ro
       - ./workflows:/app/workflows:ro
     depends_on:
       postgres:
