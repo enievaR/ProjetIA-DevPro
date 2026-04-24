@@ -23,7 +23,7 @@
 
 ### Vue services
 
-Cinq services Docker communiquent via une queue Redis et une base Postgres partagée. Le moteur d'inférence (ComfyUI) est isolé derrière une abstraction `InferenceBackend`, ce qui permet de le remplacer sans toucher au reste (ex : Futur utilisation de RunPod en production cloud).
+Cinq services Docker communiquent via une queue Redis et une base Postgres partagée. Le moteur d'inférence (ComfyUI) est isolé derrière une abstraction `InferenceBackend`, ce qui permet de le remplacer sans toucher au reste.
 
 ```mermaid
 flowchart LR
@@ -147,7 +147,7 @@ classDiagram
 | **Worker async** | arq | Workers Redis async (vs Celery sync). Intègre nativement asyncpg/httpx. |
 | **Queue / cache** | Redis 7 | Backend arq, simple, faible empreinte mémoire |
 | **DB** | Postgres 16 + asyncpg | Async natif, pas d'ORM (SQL centralisé dans `repository.py`) |
-| **Inférence** | ComfyUI + DreamShaper 8 | ComfyUI est l'implémentation référence. DreamShaper 8 = SD 1.5 (~2 Go), CPU-friendly, public, ~3 min/image. |
+| **Inférence** | ComfyUI + DreamShaper 8 | ComfyUI est l'implémentation référence. DreamShaper (~7 Go), CPU-friendly, public, ~3 min/image. |
 | **Validation** | Pydantic 2 | Contrats d'interface entre tous les services |
 | **Logs** | structlog | Logs structurés, lisibles en dev (`ConsoleRenderer`), JSON-ready en prod |
 | **Conteneurisation** | Docker Compose | Démarrage en une commande, healthchecks, dépendances ordonnées |
@@ -159,8 +159,8 @@ classDiagram
 ### Prérequis
 
 - Docker + Docker Compose
-- ~5 Go d'espace disque libre (image ComfyUI + modèle DreamShaper)
-- Connexion Internet pour le premier démarrage (téléchargement du modèle ~2 Go)
+- ~7 Go d'espace disque libre (image ComfyUI + modèle DreamShaper)
+- Connexion Internet pour le premier démarrage (téléchargement du modèle ~7 Go)
 
 ### Lancement
 
@@ -177,7 +177,7 @@ make up
 # Équivalent : docker compose up -d
 ```
 
-> ⚠️ **Premier démarrage** : compter 10-15 min. Docker build l'image ComfyUI (clone du repo, install PyTorch CPU ~2 Go) puis télécharge DreamShaper 8 (~2 Go).
+> ⚠️ **Premier démarrage** : compter 10-15 min. Docker build l'image ComfyUI (clone du repo, install PyTorch CPU ~2 Go) puis télécharge DreamShaper (~7 Go).
 > Les démarrages suivants prennent quelques secondes.
 
 ### Accéder à l'UI
@@ -330,39 +330,3 @@ Les scripts dans `scripts/` permettent de **valider chaque brique en isolation**
 | `test_worker` | toute la stack up | ~5 s en mock, ~6 min en comfyui pour 2 images |
 
 ---
-
-## Justifications architecturales
-
-> Pour le détail des choix et alternatives rejetées, voir `Conception_MVP_Ecole.md`.
-
-**Architecture event-driven asynchrone (queue-based)**
-Les composants ne s'appellent pas directement. Gradio pousse un job dans Redis, le worker dépile à son rythme. Découplage temporel : si 50 utilisateurs soumettent en même temps, les jobs s'empilent sans saturer.
-
-**Inversion de dépendance**
-Le worker dépend d'une abstraction `InferenceBackend` (cf schéma plus haut). Trois implémentations possibles, choisies par configuration. Le code métier ne change jamais.
-
-**Séparation stricte des responsabilités**
-Cinq services, un seul rôle chacun. UI affiche, worker orchestre, ComfyUI infère, Postgres persiste, Redis transporte. Chacun peut évoluer ou être remplacé indépendamment.
-
-**Workers stateless**
-Aucun état local dans le worker. Toute la vérité vit en DB et Redis. On peut tuer/redémarrer un worker à tout moment sans perdre d'information. Permet aussi le scaling horizontal (plusieurs workers dépilent la même queue).
-
-**Contrats typés Pydantic**
-Tous les payloads (requêtes Gradio, jobs Redis, réponses ComfyUI) sont validés par Pydantic. Les frontières entre services sont explicites et vérifiables au runtime.
-
-**Pas d'ORM, SQL centralisé**
-asyncpg brut + module `repository.py` qui contient tout le SQL. Lisible, testable, refactorable. Pas de magie ORM cachée.
-
-**Programmation fonctionnelle ciblée**
-Le `prompt_builder.build()` est une fonction pure : pas d'I/O, déterministe à seed fixe, composition de mappings statiques. Trivialement testable, raisonnable d'un coup d'œil.
-
----
-
-## Roadmap
-
-- ✅ **Sprint 1** (22-24 avril) — Squelette Docker + tous les stubs Python
-- ✅ **Sprint 2** (25 avril → 5 mai) — Vraie chaîne UI → queue → worker → inférence → galerie
-- 🔄 **Sprint 3** (5 → 13 mai, avec Franck) — CI/CD GitLab, déploiement VM (Ansible) + K8s (ArgoCD)
-- 🎓 **13 mai** — Soutenance
-
-Pour le détail, voir `Conception_MVP_Ecole.md`.
