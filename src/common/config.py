@@ -1,4 +1,4 @@
-"""Configuration chargé depuis env"""
+"""Configuration centralisée, chargée depuis l'environnement."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 
 class Settings(BaseModel):
-    """Déclaration des variable de configuration"""
+    """Toutes les variables d'env consommées par l'app."""
 
     # Postgres
     postgres_user: str = "projetia"
@@ -33,6 +33,7 @@ class Settings(BaseModel):
 
     # Inférence
     inference_backend: Literal["comfyui", "mock"] = "comfyui"
+    workflow_path: str = "/app/workflows/sdxl_turbo_txt2img.json"
     batch_size: int = 4
 
     # Logs
@@ -56,7 +57,7 @@ class Settings(BaseModel):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Chargement des variables depuis env"""
+    """Instance unique des settings, chargés depuis l'env."""
     return Settings(
         postgres_user=os.getenv("POSTGRES_USER", "projetia"),
         postgres_password=os.getenv("POSTGRES_PASSWORD", "changeme"),
@@ -70,6 +71,7 @@ def get_settings() -> Settings:
         gradio_host=os.getenv("GRADIO_HOST", "0.0.0.0"),
         gradio_port=int(os.getenv("GRADIO_PORT", "7860")),
         inference_backend=os.getenv("INFERENCE_BACKEND", "comfyui"),  # type: ignore[arg-type]
+        workflow_path=os.getenv("WORKFLOW_PATH", "/app/workflows/sdxl_turbo_txt2img.json"),
         batch_size=int(os.getenv("BATCH_SIZE", "4")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
     )

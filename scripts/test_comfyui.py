@@ -35,6 +35,8 @@ async def main() -> int:
     log.info("test.health.ok")
 
     # Spec de test
+    random_seed = int.from_bytes(os.urandom(4), "big")
+
     spec = PromptSpec(
         prompt=(
             "A man walk in a city at night, all the lights are on, the city is alive"
@@ -43,7 +45,7 @@ async def main() -> int:
         negative_prompt="lowres, blurry, deformed, bad anatomy, ugly, low quality",
         width=512,
         height=512,
-        seed_start=90,
+        seed_start=random_seed,
     )
 
     log.info("test.generate.start", count=1)

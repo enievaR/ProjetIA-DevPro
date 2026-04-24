@@ -120,6 +120,30 @@ clean-images: ## Vide le dossier des images générées (./data/images/*)
 	find ./data/images -mindepth 1 -not -name '.gitkeep' -delete
 
 # =============================================================================
+# Scripts de test
+# =============================================================================
+
+.PHONY: test-comfyui
+test-comfyui: ## Lance un test bout-en-bout de ComfyUIBackend (génère 1 image)
+	docker compose exec worker python -m scripts.test_comfyui
+
+.PHONY: test-mock
+test-mock: ## Lance un test du MockBackend (génère 3 placeholders)
+	docker compose exec worker python -m scripts.test_mock
+
+.PHONY: test-db
+test-db: ## Lance un test du repository DB (CRUD batches/images)
+	docker compose exec worker python -m scripts.test_db
+
+.PHONY: test-worker
+test-worker: ## Lance un test bout-en-bout du worker (DB + Redis + backend)
+	docker compose exec worker python -m scripts.test_worker
+
+.PHONY: test-prompt-builder
+test-prompt-builder: ## Affiche les prompts construits pour quelques combinaisons
+	docker compose exec worker python -m scripts.test_prompt_builder
+
+# =============================================================================
 # Code (à activer plus tard quand on aura uv en local et les tests)
 # =============================================================================
 

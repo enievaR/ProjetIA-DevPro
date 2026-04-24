@@ -44,24 +44,27 @@ services:
       - projetia-net
 
   # ---------------------------------------------------------------------------
-  # ComfyUI : moteur d'inférence (CPU, SD-Turbo téléchargé au 1er démarrage)
+  # ComfyUI : moteur d'inférence (CPU, modèle téléchargé au 1er démarrage)
   # ---------------------------------------------------------------------------
   comfyui:
     build:
       context: .
       dockerfile: docker/comfyui/Dockerfile
     restart: unless-stopped
+    env_file: .env
+    environment:
+      COMFYUI_THREADS: ${COMFYUI_THREADS:-}
     volumes:
       - ./data/models:/app/ComfyUI/models
       - ./workflows:/app/workflows:ro
     ports:
-      - "127.0.0.1:8188:8188"
+      - "8188:8188"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8188/system_stats || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 30
-      start_period: 60s
+      retries: 60
+      start_period: 120s
     networks:
       - projetia-net
 

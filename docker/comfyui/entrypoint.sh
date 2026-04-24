@@ -2,9 +2,17 @@
 set -euo pipefail
 
 MODELS_DIR="/app/ComfyUI/models/checkpoints"
-MODEL_FILE="dreamshaper_8.safetensors"
-MODEL_URL="https://huggingface.co/Lykon/DreamShaper/resolve/main/DreamShaper_8_pruned.safetensors"
-MIN_SIZE=2000000000  # 2 Go minimum (le vrai fichier fait ~2.13 Go)
+MODEL_FILE="dreamshaper_xl_turbo_v2.safetensors"
+MODEL_URL="https://huggingface.co/Lykon/dreamshaper-xl-v2-turbo/resolve/main/DreamShaperXL_Turbo_v2.safetensors"
+MIN_SIZE=6500000000  # 6.5 Go minimum
+
+# Threads CPU : par défaut PyTorch n'utilise qu'une fraction. On force le max.
+# Configurable via env var COMFYUI_THREADS, sinon utilise tous les CPU dispo.
+THREADS="${COMFYUI_THREADS:-$(nproc)}"
+export OMP_NUM_THREADS="${THREADS}"
+export MKL_NUM_THREADS="${THREADS}"
+
+echo "[entrypoint] Threads CPU : ${THREADS}"
 
 mkdir -p "${MODELS_DIR}"
 
@@ -18,11 +26,8 @@ if [[ -f "${MODELS_DIR}/${MODEL_FILE}" ]]; then
 fi
 
 if [[ ! -f "${MODELS_DIR}/${MODEL_FILE}" ]]; then
-    echo "[entrypoint] Modèle absent, téléchargement de DreamShaper 8 (~2.13 Go)..."
-    # -C - : reprise de téléchargement partiel si possible
-    # --retry 5 + delay : robustesse réseau
-    # -f : échec sur HTTP 4xx/5xx (au lieu de sauver une page d'erreur)
-    curl -fL --retry 5 --retry-delay 5 -C - \
+    echo "[entrypoint] Modèle absent, téléchargement de DreamShaper XL Turbo v2 (~6.94 Go)..."
+    curl -fL --retry 5 --retry-delay 5 -C - --progress-bar \
         -o "${MODELS_DIR}/${MODEL_FILE}" \
         "${MODEL_URL}"
     echo "[entrypoint] Téléchargement terminé."
